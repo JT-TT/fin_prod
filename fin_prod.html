@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Smart Saver: Your Guaranteed Income Plan</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body { font-family: Arial, sans-serif; background:#f6f6fa; padding:20px; }
+        .container { max-width: 900px; background:#fff; margin:50px auto; padding:30px; border-radius:8px; box-shadow: 0 2px 8px #ccc; }
+        h1 { color:#294e80; }
+        label { display:block; margin:15px 0 5px; }
+        input { padding:8px; width:100%; margin-bottom:12px; border:1px solid #ccc; border-radius:4px; }
+        table { width:100%; border-collapse: collapse; margin-top:20px; font-size: 0.9em; }
+        th, td { padding:8px; border:1px solid #d1dbee; text-align:right; }
+        th { background:#f0f4fb; color:#294e80;}
+        .highlight { background:#eafeeb; font-weight:bold;}
+        .summary { background:#e8f3ff; padding:10px; border-radius:5px; margin-top:16px; font-size: 1.1em;}
+        .notes { margin-top:18px; font-size:0.97em; color:#555;}
+        .chart-bar { background:#c7e8ca; height:20px; margin:2px 0; border-radius:5px; }
+        #chart { max-height: 300px; overflow-y: auto; margin-top: 10px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Smart Saver: Your Guaranteed Income Plan</h1>
+    <p>Enter your details and see how your investment grows until age 120!</p>
+    <form oninput="calculate()">
+        <label for="age">Your Age</label>
+        <input type="number" id="age" min="1" max="120" placeholder="e.g., 35">
+
+        <label for="premium">Annual Premium (USD)</label>
+        <input type="number" id="premium" min="1000" step="100" placeholder="e.g., 5000">
+
+        <div id="result"></div>
+    </form>
+    <div class="summary" id="summary"></div>
+    <div id="chart"></div>
+    <div class="notes">
+        <b>Key Benefits:</b>
+        <ul>
+            <li>Guaranteed payouts from the 3rd year onwards—enjoy steady income.</li>
+            <li>50% bonus payout from the 7th year, continuing for life or until age 120!</li>
+            <li>No surprises—see your money grow transparently.</li>
+            <li>Attractive for early planners seeking reliable returns.</li>
+        </ul>
+    </div>
+</div>
+<script>
+function calculate() {
+    let age = parseInt(document.getElementById('age').value);
+    let premium = parseFloat(document.getElementById('premium').value);
+    let resultDiv = document.getElementById('result');
+    let summaryDiv = document.getElementById('summary');
+    let chartDiv = document.getElementById('chart');
+
+    if (isNaN(age) || isNaN(premium) || premium <= 0 || age > 120) {
+        resultDiv.innerHTML = '';
+        summaryDiv.innerHTML = '';
+        chartDiv.innerHTML = '';
+        return;
+    }
+
+    let yearsTo120 = 120 - age + 1;
+
+    let years = [];
+    let payouts = [];
+    let cumulativePremiumPaid = 0;
+    let cumulativePayout = 0;
+    let annualPayout = 0;
+    let bonusPayout = 0;
+    let breakevenFlag = "No";
+
+    for (let year = 1; year <= yearsTo120; year++) {
+        let currentAge = age + year - 1;
+        let premiumPaidThisYear = year <= 5 ? premium : 0;
+
+        if (year < 3) {
+            annualPayout = 0;
+        } else if (year >= 3 && year < 7) {
+            annualPayout = 0.1 * premium;
+        } else if (year === 7) {
+            annualPayout = 0.1 * premium * 1.5;
+            bonusPayout = annualPayout;
+        } else if (year > 7) {
+            annualPayout = bonusPayout;
+        }
+
+        payouts.push(annualPayout);
+        cumulativePayout += annualPayout;
+        cumulativePremiumPaid += premiumPaidThisYear;
+
+        // New formula: cumulative balance = cumulative payouts - cumulative premiums paid
+        let cumulativeBalance = cumulativePayout - cumulativePremiumPaid;
+
+        if (cumulativePayout >= cumulativePremiumPaid && breakevenFlag === "No") {
+            breakevenFlag = "Yes";
+        }
+
+        years.push({
+            year: year,
+            age: currentAge,
+            premiumPaid: premiumPaidThisYear,
+            cumulativeBalance: cumulativeBalance,
+            payout: annualPayout,
+            breakeven: breakevenFlag
+        });
+    }
+
+    // Build payout table with swapped columns: Payout first, then Cumulative Balance
+    let tableHTML = `<table>
+        <tr>
+            <th>Year</th>
+            <th>Age</th>
+            <th>Premium Paid</th>
+            <th>Payout</th>
+            <th>Cumulative Balance</th>
+            <th>Breakeven</th>
+        </tr>`;
+
+    years.forEach(y => {
+        tableHTML += `<tr${y.year === 7 ? ' class="highlight"' : ''}>
+            <td>${y.year}</td>
+            <td>${y.age}</td>
+            <td>$${y.premiumPaid.toLocaleString()}</td>
+            <td>$${y.payout.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            <td>$${y.cumulativeBalance.toLocaleString(undefined, {minimumFractionDigits: 2})}</td>
+            <td>${y.breakeven}</td>
+        </tr>`;
+    });
+    tableHTML += '</table>';
+    resultDiv.innerHTML = tableHTML;
+
+    summaryDiv.innerHTML = `<b>Total Premium Paid (First 5 years):</b> $${(premium * 5).toLocaleString()}
+        <br><b>Total Guaranteed Payouts (Until Age 120):</b> $${cumulativePayout.toLocaleString(undefined, {minimumFractionDigits: 2})}
+        <br><b>Cumulative Balance at Age 120:</b> $${(cumulativePayout - premium * 5).toLocaleString(undefined, {minimumFractionDigits: 2})}`;
+
+    chartDiv.innerHTML = '<b>Payout Progression:</b><br>' +
+        payouts.map(val => `<div class="chart-bar" style="width:${val / premium * 200}px">${val > 0 ? '$' + val.toLocaleString(undefined, {minimumFractionDigits: 2}) : ''}</div>`).join('');
+}
+</script>
+</body>
+</html>
